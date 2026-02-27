@@ -102,11 +102,10 @@
                                         @foreach($attrData as $key => $val)
                                             <input type="hidden" name="variants[{{$i}}][attr_data][{{$key}}]" value="{{$val}}">
                                         @endforeach
-                                        <img src="{{ $primaryImg ? asset('storage/'.$primaryImg->image_path) : asset('assets/img/placeholder.png') }}" class="img-thumbnail variant-preview-img" style="width:45px; height:45px; object-fit:contain;">
+                                        <img src="{{ $primaryImg && is_file(public_path('storage/' . $primaryImg->image_path)) ? asset('storage/'.$primaryImg->image_path) : asset('no-image-found.jpg') }}" class="img-thumbnail variant-preview-img" style="width:45px; height:45px; object-fit:contain;">
                                         <br>
                                         <button type="button" class="btn btn-link btn-sm p-0 open-image-manager" style="font-size:11px">Manage</button>
-                                        <input type="hidden" name="variants[{{$i}}][image_data]" class="variant-image-data" 
-                                            value="{{ json_encode(['primary' => $primaryImg ? asset('storage/'.$primaryImg->image_path) : null, 'secondary' => array_map(fn($p) => asset('storage/'.$p), $secondaryImgs)]) }}">
+                                        <input type="hidden" name="variants[{{$i}}][image_data]" class="variant-image-data"  value="{{ json_encode(['primary' => $primaryImg ? asset('storage/'.$primaryImg->image_path) : null, 'secondary' => array_map(fn($p) => asset('storage/'.$p), $secondaryImgs)]) }}">
                                     </div>
                                 </td>
                                 <td><input type="text" name="variants[{{$i}}][name]" class="form-control form-control-sm" value="{{ $variant->name }}"></td>
@@ -590,6 +589,7 @@ $(document).ready(function() {
 
     $('#productForm').on('submit', function(e) {
         let isValid = true;
+        let usedSkus = new Set();
         
         $('.variant-error').remove();
         $('.is-invalid').removeClass('is-invalid');
@@ -617,10 +617,20 @@ $(document).ready(function() {
                 isValid = false;
             }
 
-            if (skuInput.length && skuInput.val().trim() === '') {
-                skuInput.addClass('is-invalid');
-                skuInput.after('<label class="error text-danger variant-error w-100 mt-1 mb-0" style="font-size:12px">SKU is required</label>');
-                isValid = false;
+            if (skuInput.length) {
+                const skuValue = skuInput.val().trim();
+                
+                if (skuValue === '') {
+                    skuInput.addClass('is-invalid');
+                    skuInput.after('<label class="error text-danger variant-error w-100 mt-1 mb-0" style="font-size:12px">SKU is required</label>');
+                    isValid = false;
+                } else if (usedSkus.has(skuValue.toLowerCase())) {
+                    skuInput.addClass('is-invalid');
+                    skuInput.after('<label class="error text-danger variant-error w-100 mt-1 mb-0" style="font-size:12px">SKU must be unique across all variants</label>');
+                    isValid = false;
+                } else {
+                    usedSkus.add(skuValue.toLowerCase());
+                }
             }
 
             if (taxSlabSelect.length && (!taxSlabSelect.val() || taxSlabSelect.val().trim() === '')) {
