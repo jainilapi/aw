@@ -270,19 +270,64 @@ $(document).ready(function() {
 
     $('#generate-variants').on('click', function() {
         const productName = "{{ $product->name }}" || "Product";
+        $('.attr-name, .attr-values').removeClass('is-invalid');
+        $('.select2-container').removeClass('is-invalid');
+        $('.attr-error').remove();
+        
+        let isValid = true;
         let attributes = [];
-
+        let usedNames = new Set();
+        
         $('.attribute-row').each(function() {
-            const name = $(this).find('.attr-name').val().trim();
-            const values = $(this).find('.attr-values').val();
+            let row = $(this);
+            const nameInput = row.find('.attr-name');
+            const valuesInput = row.find('.attr-values');
+            
+            const name = nameInput.val().trim();
+            const values = valuesInput.val();
 
-            if (name !== "" && values && values.length > 0) {
+            let rowValid = true;
+
+            if (name === '') {
+                nameInput.addClass('is-invalid');
+                nameInput.after('<label class="error text-danger attr-error w-100 mt-1 mb-0" style="font-size:12px">Attribute Name is required</label>');
+                rowValid = false;
+                isValid = false;
+            } else {
+                // Check uniqueness for this product's current attributes
+                if (usedNames.has(name.toLowerCase())) {
+                    nameInput.addClass('is-invalid');
+                    nameInput.after('<label class="error text-danger attr-error w-100 mt-1 mb-0" style="font-size:12px">Attribute Name must be unique</label>');
+                    rowValid = false;
+                    isValid = false;
+                } else {
+                    usedNames.add(name.toLowerCase());
+                }
+            }
+            
+            if (!values || values.length === 0) {
+                valuesInput.next('.select2-container').addClass('is-invalid');
+                valuesInput.next('.select2-container').after('<label class="error text-danger attr-error w-100 mt-1 mb-0" style="font-size:12px">At least one value is required</label>');
+                rowValid = false;
+                isValid = false;
+            }
+
+            if (rowValid) {
                 attributes.push({ name: name, values: values });
             }
         });
 
+        if (!isValid) {
+            return;
+        }
+
         if (attributes.length === 0) {
-            alert("Error: Please provide at least one attribute name and at least one value.");
+            Swal.fire({
+                title: 'No Attributes',
+                text: "Please provide at least one valid attribute.",
+                icon: 'error',
+                confirmButtonText: 'OK'
+            });
             return;
         }
 
@@ -291,6 +336,16 @@ $(document).ready(function() {
         }, [{}]);
 
         renderTable(combinations, productName);
+    });
+
+    $(document).on('input', '.attr-name', function() {
+        $(this).removeClass('is-invalid');
+        $(this).siblings('.attr-error').remove();
+    });
+
+    $(document).on('change', '.attr-values', function() {
+        $(this).next('.select2-container').removeClass('is-invalid');
+        $(this).next('.select2-container').siblings('.attr-error').remove();
     });
 
     function renderTable(combinations, productName) {
