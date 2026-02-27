@@ -1,12 +1,21 @@
 @extends('products.layout', ['step' => $step, 'type' => $type, 'product' => $product])
 
-@section('product-css')
+@push('product-css')
 <style>
     .bg-soft-primary { background: #eef2ff; }
     .bg-soft-dark { background: #f8f9fa; }
     .animate__animated { animation-duration: 0.4s; }
+    .h-47px {
+        height: 47px;
+    }
+    .attr-rem-icon {
+        height: 40px!important;
+        width: 40px!important;
+        font-size: 20px!important;
+        margin-top: 4px!important;
+    }
 </style>
-@endsection
+@endpush
 
 @section('product-content')
 <div class="card shadow-sm border-0">
@@ -32,25 +41,23 @@
 
                     @forelse($existingAttributes as $index => $attr)
                         <div class="attribute-row mb-3 d-flex gap-2 align-items-start">
-                            <div class="form-check pt-2"><input class="form-check-input attr-active" type="checkbox" checked></div>
                             <div style="width: 200px;">
                                 <input name="attr_name[{{$index}}]" type="text" class="form-control attr-name" value="{{ $attr->name }}">
                             </div>
                             <div class="flex-grow-1">
-                                <select name="attr_values[{{$index}}][]" class="form-control select2-tags attr-values" multiple>
+                                <select name="attr_values[{{$index}}][]" class="form-control select2-tags attr-values" multiple required>
                                     @foreach($attr->values as $val)
                                         <option value="{{ $val->value }}" selected>{{ $val->value }}</option>
                                     @endforeach
                                 </select>
                             </div>
-                            <button type="button" class="btn btn-outline-danger btn-sm remove-attribute"><i class="fa fa-trash"></i></button>
+                            <button type="button" class="btn btn-outline-danger btn-sm remove-attribute attr-rem-icon"><i class="fa fa-trash"></i></button>
                         </div>
                     @empty
                         <div class="attribute-row mb-3 d-flex gap-2 align-items-start">
-                            <div class="form-check pt-2"><input class="form-check-input attr-active" type="checkbox" checked></div>
-                            <div style="width: 200px;"><input name="attr_name[0]" type="text" class="form-control attr-name" placeholder="Attribute (e.g. Color)"></div>
-                            <div class="flex-grow-1"><select name="attr_values[0][]" class="form-control select2-tags attr-values" multiple></select></div>
-                            <button type="button" class="btn btn-outline-danger btn-sm remove-attribute"><i class="fa fa-trash"></i></button>
+                            <div style="width: 200px;"><input name="attr_name[0]" type="text" class="form-control attr-name h-47px" placeholder="Attribute (e.g. Color)" required></div>
+                            <div class="flex-grow-1"><select name="attr_values[0][]" class="form-control select2-tags attr-values" multiple required></select></div>
+                            <button type="button" class="btn btn-outline-danger btn-sm remove-attribute attr-rem-icon"><i class="fa fa-trash"></i></button>
                         </div>
                     @endforelse
                 </div>
@@ -95,7 +102,7 @@
                                         @foreach($attrData as $key => $val)
                                             <input type="hidden" name="variants[{{$i}}][attr_data][{{$key}}]" value="{{$val}}">
                                         @endforeach
-                                        <img src="{{ $primaryImg ? asset('storage/'.$primaryImg->image_path) : asset('assets/img/placeholder.png') }}" class="img-thumbnail variant-preview-img" style="width:45px; height:45px; object-fit:cover;">
+                                        <img src="{{ $primaryImg ? asset('storage/'.$primaryImg->image_path) : asset('assets/img/placeholder.png') }}" class="img-thumbnail variant-preview-img" style="width:45px; height:45px; object-fit:contain;">
                                         <br>
                                         <button type="button" class="btn btn-link btn-sm p-0 open-image-manager" style="font-size:11px">Manage</button>
                                         <input type="hidden" name="variants[{{$i}}][image_data]" class="variant-image-data" 
@@ -222,23 +229,43 @@ $(document).ready(function() {
 
         const html = `
             <div class="attribute-row mb-3 d-flex gap-2 align-items-start animate__animated animate__fadeIn">
-                <div class="form-check pt-2">
-                    <input class="form-check-input attr-active" type="checkbox" checked>
-                </div>
                 <div style="width: 200px;">
-                    <input type="text" name="attr_name[${index}]" class="form-control attr-name" placeholder="Attribute (e.g. Size)">
+                    <input type="text" name="attr_name[${index}]" class="form-control attr-name h-47px" placeholder="Attribute (e.g. Size)">
                 </div>
                 <div class="flex-grow-1">
-                    <select name="attr_values[${index}][]" class="form-control select2-dynamic attr-values" multiple data-placeholder="Add values..."></select>
+                    <select name="attr_values[${index}][]" class="form-control select2-dynamic attr-values" multiple required data-placeholder="Add values..."></select>
                 </div>
-                <button type="button" class="btn btn-outline-danger btn-sm remove-attribute"><i class="fa fa-trash"></i></button>
+                <button type="button" class="btn btn-outline-danger btn-sm attr-rem-icon remove-attribute"><i class="fa fa-trash"></i></button>
             </div>`;
         $('#attribute-wrapper').append(html);
         initSelect2('.select2-dynamic:last');
     });
 
     $(document).on('click', '.remove-attribute', function() {
-        $(this).closest('.attribute-row').remove();
+        let that = this;
+
+        if ($('.attribute-row').length <= 1) {
+            Swal.fire({
+                title: 'Cannot Delete',
+                text: "Variable product must have at least an attribute.",
+                icon: 'error',
+                confirmButtonText: 'OK'
+            });
+            return;
+        }
+
+        Swal.fire({
+            title: 'Remove this attribute?',
+            text: "This will remove related variants. Are you sure?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, remove it!',
+            cancelButtonText: 'No, keep it'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $(that).closest('.attribute-row').remove();
+            }
+        });
     });
 
     $('#generate-variants').on('click', function() {
@@ -246,11 +273,10 @@ $(document).ready(function() {
         let attributes = [];
 
         $('.attribute-row').each(function() {
-            const isActive = $(this).find('.attr-active').is(':checked');
             const name = $(this).find('.attr-name').val().trim();
             const values = $(this).find('.attr-values').val();
 
-            if (isActive && name !== "" && values && values.length > 0) {
+            if (name !== "" && values && values.length > 0) {
                 attributes.push({ name: name, values: values });
             }
         });
@@ -294,7 +320,7 @@ $(document).ready(function() {
                 <tr class="variant-row" data-index="${i}">
                     <td>
                         <div class="text-center">
-                            ${attrHiddenInputs} <img src="/assets/img/placeholder.png" class="img-thumbnail variant-preview-img" style="width:45px; height:45px; object-fit:cover;">
+                            ${attrHiddenInputs} <img src="{{ asset('no-image-found.jpg') }}" class="img-thumbnail variant-preview-img" style="width:45px; height:45px; object-fit:contain;">
                             <br>
                             <button type="button" class="btn btn-link btn-sm p-0 open-image-manager" style="font-size:11px">Manage</button>
                             <input type="hidden" name="variants[${i}][image_data]" class="variant-image-data">
