@@ -533,6 +533,66 @@ $(document).ready(function() {
         $('#variantImageModal').modal('hide');
     });
 
+    $('#productForm').on('submit', function(e) {
+        let isValid = true;
+        
+        $('.variant-error').remove();
+        $('.is-invalid').removeClass('is-invalid');
+
+        if ($('.variant-row').length === 0) {
+            Swal.fire({
+                title: 'No Variants',
+                text: "Please generate at least one variant before saving.",
+                icon: 'error',
+                confirmButtonText: 'OK'
+            });
+            e.preventDefault();
+            return false;
+        }
+
+        $('.variant-row').each(function() {
+            let row = $(this);
+            let nameInput = row.find('input[name$="[name]"]');
+            let skuInput = row.find('input[name$="[sku]"]');
+            let taxSlabSelect = row.find('select[name$="[tax_slab_id]"]');
+
+            if (nameInput.length && nameInput.val().trim() === '') {
+                nameInput.addClass('is-invalid');
+                nameInput.after('<label class="error text-danger variant-error w-100 mt-1 mb-0" style="font-size:12px">Name is required</label>');
+                isValid = false;
+            }
+
+            if (skuInput.length && skuInput.val().trim() === '') {
+                skuInput.addClass('is-invalid');
+                skuInput.after('<label class="error text-danger variant-error w-100 mt-1 mb-0" style="font-size:12px">SKU is required</label>');
+                isValid = false;
+            }
+
+            if (taxSlabSelect.length && (!taxSlabSelect.val() || taxSlabSelect.val().trim() === '')) {
+                taxSlabSelect.addClass('is-invalid');
+                taxSlabSelect.after('<label class="error text-danger variant-error w-100 mt-1 mb-0" style="font-size:12px">Tax Slab is required</label>');
+                isValid = false;
+            }
+        });
+
+        if (!isValid) {
+            e.preventDefault();
+            // Scroll to the first error for better UX
+            const firstError = $('.is-invalid').first();
+            if (firstError.length) {
+                $('html, body').animate({
+                    scrollTop: firstError.offset().top - 150
+                }, 500);
+            }
+            return false;
+        }
+    });
+
+    $(document).on('input change', '.variant-row input, .variant-row select', function() {
+        $(this).removeClass('is-invalid');
+        $(this).siblings('.variant-error').remove();
+    });
+
     if ($('#variant-tbody tr').length > 0) {
         $('#variants-table-container').removeClass('d-none');
         $('#variant-count-badge').text($('#variant-tbody tr').length + ' Variants Loaded');
