@@ -242,7 +242,7 @@ $(document).ready(function() {
     });
 
     $('#generate-variants').on('click', function() {
-        const productName = $('#product_name').val() || "Product";
+        const productName = "{{ $product->name }}" || "Product";
         let attributes = [];
 
         $('.attribute-row').each(function() {
@@ -365,21 +365,6 @@ $(document).ready(function() {
         });
     });
 
-    $(document).on('click', '#save-variant-images', function() {
-        const index = $('#current_variant_index').val();
-        const primaryImg = $('#primary-preview').attr('src');
-        
-        const row = $(`.variant-row[data-index="${index}"]`);
-        row.find('.variant-preview-img').attr('src', primaryImg);
-        
-        row.find('.variant-image-data').val(JSON.stringify({
-            primary: primaryImg,
-            secondary: []
-        }));
-
-        $('#variantImageModal').modal('hide');
-    });
-
     $('#bulk-enable-all').on('click', function() {
         $('.variant-toggle').prop('checked', true);
     });
@@ -427,13 +412,36 @@ $(document).ready(function() {
         
         $('#current_variant_index').val(index);
         
+        // Reset file inputs and gallery
+        $('#primary-image-input').val('');
+        $('#secondary-images-input').val('');
+        $('#secondary-gallery').empty();
+        
         let existingData = row.find('.variant-image-data').val();
         if (existingData) {
             let data = JSON.parse(existingData);
-            $('#primary-preview').attr('src', data.primary || '/assets/img/placeholder.png');
+            $('#primary-preview').attr('src', data.primary || "{{ asset('no-image-found.jpg') }}");
+            
+            if (data.secondary && data.secondary.length > 0) {
+                $.each(data.secondary, function(i, src) {
+                    if (src) {
+                        const html = `
+                            <div class="col-md-4 gallery-item animate__animated animate__fadeIn">
+                                <div class="card h-100 shadow-sm border-0 position-relative">
+                                    <img src="${src}" class="card-img-top rounded p-2 secondary-preview-img" style="height: 120px; object-fit: cover;">
+                                    <div class="card-footer bg-white border-0 p-1">
+                                        <button type="button" class="btn btn-danger btn-xs w-100 delete-gallery-img" style="font-size:10px">
+                                            <i class="fa fa-trash"></i> Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>`;
+                        $('#secondary-gallery').append(html);
+                    }
+                });
+            }
         } else {
-            $('#primary-preview').attr('src', '/assets/img/placeholder.png');
-            $('#secondary-gallery').empty();
+            $('#primary-preview').attr('src', "{{ asset('no-image-found.jpg') }}");
         }
         
         $('#variantImageModal').modal('show');
